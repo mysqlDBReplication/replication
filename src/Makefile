@@ -1,4 +1,5 @@
 BASE_DIR := .
+<<<<<<< HEAD
 SRC_DIR  := ./../common/proto
 DST_DIR  := .
 

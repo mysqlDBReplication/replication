@@ -92,17 +92,9 @@ class detectChanges(object):
         Raises:
             NA.
         """
-        status, file_content = general_utils.\
-            read_file_contents(self.lookup_file)
-        if not status:
-            logging.error("Unable to read file content from \"%s\"",
-                          self.lookup_file)
-            return FAILURE
-
-        try:
-            Merge(file_content, self.replication_details)
-        except Exception as cause:
-            logging.error(cause)
+        if not general_utils.merge_proto(self.lookup_file,
+                                         self.replication_details, 'Text'):
+            logging.error("Merging of proto file failed")
             return FAILURE
 
         return SUCCESS

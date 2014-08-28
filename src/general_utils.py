@@ -93,3 +93,35 @@ def write(file_name=None, content=None, flags=None):
     file_descriptor.write(str(content))
     file_descriptor.close()
     return SUCCESS
+
+
+def merge_proto(file_name, proto_msg, format='Text'):
+    """This function is used to merge the given proto msg with the content
+    in the given file.
+    Args:
+        file_name: Name of the file from which content should be taken.
+        proto_msg: Proto message which needs to be merged with file content.
+    Returns:
+        True on success else False.
+    Raises:
+        NA.
+    """
+    status, file_content = read_file_contents(file_name)
+    if not status:
+        logging.error("Unable to read file content from \"%s\"", file_name)
+        return FAILURE
+
+    try:
+        if format == 'Text':
+            Merge(file_content, proto_msg)
+        elif format == 'Bin':
+            proto_msg.MergeFromString(file_content)
+        else:
+            logging.error("Invalid format given.")
+            return FAILURE
+
+    except Exception as cause:
+        logging.error(cause)
+        return FAILURE
+
+    return SUCCESS

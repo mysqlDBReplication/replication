@@ -9,12 +9,13 @@ FAILURE = False
 import os
 import commands
 import logging
+import general_utils
 LOCATION = os.path.dirname(os.path.abspath(__file__))
 os.chdir(LOCATION)
 commands.getstatusoutput("make clean")
 commands.getstatusoutput("make")
 import config_pb2
-
+from google.protobuf.text_format import Merge
 
 class detectChanges(object):
     """ This class is used to detect changes in a given file.
@@ -52,15 +53,94 @@ class detectChanges(object):
         else:
             logging.info("Timestamp of file \"%s\" returned is %s", file_name,
                          out)
-            time = out.split('=')[1]
+            time = int(out.split('=')[1])
             return SUCCESS, time
 
     def get_previous_changed_time(self):
-        """This function is used to get the timestamp when last 2 databases
+        """This function is used to get the timestamp when last time, databases
         were replicated."""
+        if not self.replication_details.HasField('timestamp'):
+            self.merge_config_protobuf()
         return self.replication_details.timestamp
 
-    def get_previous_replication_details(self):
-        """This Function is used to get the previous replication details and
-        Merge them into self.replication_details variable."""
-        pass
+    def get_log_file(self):
+        """This function is used to return the log file name."""
+        if not self.replication_details.HasField('log_file'):
+            self.merge_config_protobuf()
+        return self.replication_details.log_file
+
+    def get_previous_index_pos(self):
+        """This function is used to return the index position until which
+        databases are replicated."""
+        if not self.replication_details.HasField('index_pos'):
+            self.merge_config_protobuf()
+        return self.replication_details.index_pos
+
+    def get_index_file(self):
+        """This function is used to get the index file."""
+        if not self.replication_details.HasField('index_file'):
+            self.merge_config_protobuf()
+        return self.replication_details.index_file
+        
+    def merge_config_protobuf(self):
+        """This function is used to merge the config details from the lookup
+        file with replication_details variable.
+        Args:
+            self: Instance of the class.
+        Returns:
+            True on success else False.
+        Raises:
+            NA.
+        """
+        status, file_content = general_utils.\
+            read_file_contents(self.lookup_file)
+        if not status:
+            logging.error("Unable to read file content from \"%s\"",
+                          self.lookup_file)
+            return FAILURE
+
+        try:
+            Merge(file_content, self.replication_details)
+        except Exception as cause:
+            logging.error(cause)
+            return FAILURE
+
+        return SUCCESS
+
+    def check_changes(self):
+        """This function is used to check the changes in the log file and
+        index file.
+        Args:
+            self: Instance of the class.
+        Returns:
+            True on Succses else False.
+            Yes if there are changes else No.
+        Raises:
+            NA.
+        """
+        if not self.merge_config_protobuf():
+            logging.error("Parsing the given protobuf file failed.")
+            return FAILURE, 'No'
+
+        index_file = self.get_index_file()
+        log_file = self.get_log_file()
+        previous_timestamp = self.get_previous_changed_time()
+        logging.info("previous timestamp is " + str(previous_timestamp))
+
+        status, log_timestamp = self.get_last_changed_time(log_file)
+        if not status:
+            logging.error("Unable to get the time stamp of \"%s\"", log_file)
+            return FAILURE, 'No'
+        logging.info("log file timestamp is " + str(log_timestamp))
+
+        status, index_timestamp = self.get_last_changed_time(index_file)
+        if not status:
+            logging.error("Unable to get the time stamp of \"%s\"", index_file)
+            return FAILURE, 'No'
+        logging.info("index file timestamp is " + str(index_timestamp))
+
+        if log_timestamp > previous_timestamp or\
+                index_timestamp > previous_timestamp:
+            return SUCCESS, 'Yes'
+        else:
+            return SUCCESS, 'No'

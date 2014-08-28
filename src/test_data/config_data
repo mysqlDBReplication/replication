@@ -1,0 +1,4 @@
+timestamp: 1409237071
+index_file: "/var/log/mysql/mysql-bin.index"
+log_file: "/var/log/mysql/mysql-bin.000002"
+index_pos: 1200

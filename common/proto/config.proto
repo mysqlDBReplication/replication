@@ -6,9 +6,11 @@ package mysqlReplication;
 message previousReplicationDetails{
   // This variable is used to store the previous timestamp when replicated.
   optional int64 timestamp = 1;  // required
-  // This variable is used to store the file name that bis read previously.
+  // This variable is used to store the file name that is read previously.
   optional string log_file = 2;  // required
+  // This variable isused to store the index file that is read previously.
+  optional string index_file = 3;  // required
   // This variable is used to store the index pos until which the file is
   // read previously.
-  optional int32 index_pos = 3; // required
+  optional int32 index_pos = 4; // required
 }

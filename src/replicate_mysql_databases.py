@@ -91,4 +91,7 @@ class replicateDatabases(object):
         db = MySQLdb.connect(host="localhost", user="root", passwd="root",
                              db="asterisk")
         # TODO(praneeth): Make the credentials not accesible.
+        status, file_content = general_utils.\
+            read_file_contents(self.temp_db_textlog_file)
+        
 

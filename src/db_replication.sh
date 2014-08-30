@@ -9,8 +9,8 @@
 #version        : 1.0
 #=============================================================================
 
-lock_file='/var/log/db_replication.lock'
-log_file='/var/log/db_replication_'`date +%Y%m%d_%H%M%S`.log
+lock_file='/var/log/replication/db_replication.lock'
+log_file='/var/log/replication/db_replication_'`date +%Y%m%d_%H%M%S`.log
 
 # Check for the given parameters
 #=============================================================================
@@ -69,22 +69,10 @@ GET_DB_LOG(){
     fi
 
     cd ${log_dir}
-    mysqlbinlog `ls ${log_base}.* | grep -v '*.index'` > ${temp_sql_log}
+    file_list=`ls ${log_base}.* | grep -v '.index'`
+    echo $file_list
+    mysqlbinlog ${file_list} > ${temp_sql_log} 2>>$log_file
 
-}
-
-REMOTE_CONNECT(){
-    ssh ${host_user}@${ip_address} -o ConnectTimeout=${connection_time_out}
-    ret=$?
-    if [ $ret -ne 0 ]; then
-	LOG "ERROR: Unable to connect to ${ip_address}"
-	CLEAN_UP
-	exit 2
-    fi
-}
-
-REMOTE_DISCONNECT(){
-    exit;
 }
 
 SCP(){
@@ -99,7 +87,7 @@ SCP(){
             LOG "ERROR: scp of $local_file to $remote_file failed."
             CLEAN_UP
             exit 2
-	fi
+        fi
     elif [ ${put_or_get} = 'get' ]; then
         scp -o ConnectTimeout=${connection_time_out} ${host_user}@${ip_address}:${remote_file} ${local_file}
         ret=$?
@@ -112,7 +100,11 @@ SCP(){
 }
 
 GET_DIFF(){
-    sed -n '/use ${db_name}\/\*\/\;/,/use/'p ${temp_sql_log} | sed '/use/d' > ${temp1_sql_log}
+    LOG "info: in get diff"
+    sed -i "s/\`${db_name}\`/${db_name}/g" ${temp_sql_log}
+    sed -n "1,/use/"p ${temp_sql_log} | grep 'SET' > ${temp1_sql_log}
+    
+    sed -n "/use ${db_name}/,/use/"p ${temp_sql_log} | sed "/use/d" >> ${temp1_sql_log}
     mv ${temp1_sql_log} ${temp_sql_log}
 
     diff ${sql_log} ${temp_sql_log} | sed -n '/^>/'p | cut -c2-500000 > ${temp1_sql_log}
@@ -126,8 +118,8 @@ EXECUTE_DIFF(){
         user=${local_db_user}
         pass=${local_db_pass}
     fi
-
-    sed -i 11 "SET sql_log_bin = 0;" ${temp1_sql_log}
+    LOG "info: in execute diff"
+    sed -i 1i"SET sql_log_bin = 0;" ${temp1_sql_log}
     mysql -u${user} -p${pass} ${db_name} < ${temp1_sql_log}
     ret=$?
     if [ $ret != 0 ]; then
@@ -140,14 +132,54 @@ EXECUTE_DIFF(){
     mv ${temp_sql_log} ${sql_log}
 }
 
+REMOTE_CONNECT(){
+    ssh $host_user@$ip_address -o ConnectTimeout=$connection_time_out >> $log_file <<SSH
+    cd ${remote_log_dir}
+    echo ${temp_sql_log} ${db_name}
+
+    sed -i "s/\\\`${db_name}\\\`/${db_name}/g" ${temp_sql_log}
+    sed -n "1,/use/"p ${temp_sql_log} | grep 'SET' > ${temp1_sql_log}
+    sed -n "/use ${db_name}/,/use/"p ${temp_sql_log} | sed "/use/d" >> ${temp1_sql_log}
+    ls -l ${temp1_sql_log} ${temp_sql_log} ${sql_log}
+    mv ${temp1_sql_log} ${temp_sql_log}
+    diff ${sql_log} ${temp_sql_log} | sed -n '/^>/'p | cut -c2-500000 > ${temp1_sql_log}
+
+    sed -i 1i"SET sql_log_bin = 0\;" ${temp1_sql_log}
+    ls -l ${temp1_sql_log} ${temp_sql_log} ${sql_log}
+    head -1 ${temp1_sql_log}
+    cat ${temp1_sql_log}
+    mysql -u${remote_db_user} -p${remote_db_pass} ${db_name} < ${temp1_sql_log}
+    ret=$?
+    echo $ret
+    if [ $ret != 0 ]; then
+        echo "Diff execution failed"
+        exit 2
+    fi
+    mv ${temp_sql_log} ${sql_log}
+    echo $?
+    echo ${remote_log_base}
+    pwd
+    ls ${remote_log_base}.*
+    ls ${remote_log_base}.* | grep -v '.index' > files
+    echo $?
+    cat files
+    mysqlbinlog ${remote_log_base}.* | grep -v '.index' > ${temp_sql_log}
+    #echo $?
+SSH
+ 
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        LOG "ERROR: Unable to connect to ${ip_address}"
+        LOG "ERROR: Failed with error code $ret"
+        CLEAN_UP
+        exit 2
+    fi  
+}
+
+
 GET_DB_LOG 'local'
 SCP ${temp_sql_log} ${temp_sql_log} 'put'
 REMOTE_CONNECT
-GET_DIFF
-EXECUTE_DIFF 'remote'
-GET_DB_LOG 'remote'
-CLEAN_UP
-REMOTE_DISCONNECT
 SCP ${temp_sql_log} ${temp_sql_log} 'get'
 GET_DIFF
 EXECUTE_DIFF 'local'

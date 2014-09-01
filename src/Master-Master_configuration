@@ -1,0 +1,133 @@
+SETTING UP MASTER MASTER CONFIGURATION OF MYSQL ON UBUNTU
+
+STEP 1
+	Install the mysql-server and mysql-client in both the servers
+
+	command : sudo apt-get install mysql-server mysql-client
+
+STEP 2
+
+ 	get the ip address of both the servers
+
+	For example the ipaddress of servers are
+		MASTER1 : 10.176.15.66
+		MASTER2 : 10.176.15.85
+
+STEP 3
+
+	Once the mysql is installed in both the servers, in the MASTER1 server go to the directory /etc/mysql/
+
+	Open the file my.cnf
+	under the section [mysqld] please update the following variables(if not present please write them up)
+	
+	server-id		= 	1
+	log_bin			= 	/var/log/mysql/mysql-bin.log
+	binlog_do_db		= 	asterisk 
+	log-slave-updates	= 	ON
+	binlog_format		= 	MIXED
+	slave-skip-errors	=	1054,1051
+
+	Please comment the below line (if uncommented the mysql server will not allow any external machines to connect to this server)
+	#bind-address		= 127.0.0.1
+
+	the first line is the server-id of the MASTER1(which we can fix arbitarily)
+	the second line is the binary logfiles path and file name(binary logs will be stored in this file)
+	the third line binlog_do_db is the database for which binary logging should be done(can give multiple database names i have used asterisk as my database name)(we can also filter the databases using "Binlog_Ignore_DB" variable which will ignore these db but will log all other databases)
+	the fourth line is log-slave-updates option which will ask the slave server to log the transactions that were done in masterserver as well. 
+	the fifthe line "binlog_format" is the format in which logging should be happened. The possinble values are "ROW","STATEMENT" and "MIXED". if either ROW or STATEMENT is selected , database might give error when opposite(like ROW based when STATEMENT is selected) based transaction happens. It is always safe to give MIXED option
+	
+	the sixth line slave-skip-errors is not necessary in master-master replication setup.( it is used in master -slave setup) these 2 errors are happen when some one created the tables directly in slave and inserted the data in slave. when the same transactions comes from master the slave gives an error and stops replicating. To restart the replication we need to give this statement and restart the mysql server.(please note that if the table structure is different in slave than in master this might create a different and error and replication issues. hence make sure not to add anything directly in slave server when the configuration is done as master-slave)
+
+	
+STEP 4
+	save the above configuration file and restart the server
+
+STEP 5
+
+	create an user by which the other server connects this server
+
+	example :
+		create user asterisk_master@'%' identified by '<password>'
+
+STEP 6
+	once the user is created grant the replication permissions to this user
+	
+	example
+		grant replication slave on *.* to asterisk_master
+
+STEP 7
+	Get the master status of the MASTER1 server using the following command
+	
+	show master status;
+
+	show master status;
+	+------------------+----------+--------------+------------------+
+	| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB |
+	+------------------+----------+--------------+------------------+
+	| mysql-bin.000002 |      299 | asterisk     |                  |
+	+------------------+----------+--------------+------------------+
+
+	make a note of this which we will use to configure master 2
+
+STEP 8
+
+	Repeat Step 3 in MASTER2 server. give serverid as 2 in this instance
+
+STEP 9
+	save the above configuration file and restart the server
+
+STEP 10
+
+	create an user by which the other server connects this server
+
+	example :
+		create user asterisk_slave@'%' identified by '<password>';
+
+STEP 11
+	once the user is created grant the replication permissions to this user
+	
+	example
+		grant replication slave on *.* to asterisk_slave;
+
+STEP 12
+	Get the master status of the MASTER1 server using the following command
+	
+	show master status;
+
+	show master status;
+	+------------------+----------+--------------+------------------+
+	| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB |
+	+------------------+----------+--------------+------------------+
+	| mysql-bin.000001 |      346 | asterisk     |                  |
+	+------------------+----------+--------------+------------------+
+
+	make a note of this which we will use to configure master 1
+
+STEP 13
+	on MASTER1 server run the following commands
+
+	slave stop;
+	CHANGE MASTER TO MASTER_HOST = '<master2 ip address>', MASTER_USER ='<replicator user of MASTER2>',MASTER_PASSWORD = 'password of MASTER2 user', MASTER_LOG_FILE = 'logfile of MASTER2', MASTER_LOG_POS = <log position in the logfile>;
+	slave start;
+
+	
+	example:
+	slave stop;
+	CHANGE MASTER TO MASTER_HOST = '10.176.15.66', MASTER_USER ='asterisk_slave',MASTER_PASSWORD = 'asterisk', MASTER_LOG_FILE = 'mysql-bin.000001', MASTER_LOG_POS = 346;
+	slave start;
+
+STEP 14
+
+	repeat the STEP 13 in MASTER2
+
+
+Thats it the setup is done
+create anything on anyserver and check if it is reflected on other server
+
+
+
+MISTAKES WE GENERALLY MAKE : 
+	1) Not commenting the bind-address in my.cnf file(this will not allow other servers to connect)
+	2) not placing the correct database name in  "binlog_do_db" variable.
+
+

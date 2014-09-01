@@ -49,7 +49,7 @@ if [ $ret -ne 0 ]; then
     echo "user creation failed."
     exit 2
 fi
-sudo chmod 600 /home/$1/db_upload
+sudo chmod 700 /home/$1/db_upload
 ret=$?
 if [ $ret -ne 0 ]; then
     echo "Failed to create a db_upload folder."

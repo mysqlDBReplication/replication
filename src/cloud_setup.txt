@@ -1,0 +1,19 @@
+# This file holds the steps to setup a new client.
+
+-> Once a client is registered run the add_user_ubuntu.sh or add_user_centos.sh script in the cloud server.
+
+-> In the client(local server) run the generate_ssh_keys script which will generate the private and public ssh keys.
+
+the public key file will be ~/.ssh/id_rsa.pub
+
+-> copy the content of public key file, login into the user account of cloud vm(credentials given to add_user_ubuntu.sh)
+go to ~/.ssh folder and place the copied content in authorized_keys file.
+
+-> run the following to commands in local machine
+
+sh cron-setup.sh 'sh <dir>/checkTunneling.sh' 2
+sh cron-setup.sh 'sh <dir>/db_upload.sh' 1
+
+-> setup the .tunneling.conf script with assigned port number for client, and give the ipaddres of cloud vm, user name of the client
+
+-> run the tunneling.sh script in local (client) machine

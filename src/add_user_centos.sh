@@ -16,7 +16,7 @@ PASSWORD=$2
 
 # Check if the given user exists
 # ==============================
-grep -i "^${USER_NAME}" /etc/passwd >> /dev/null 
+grep -i "^${USER_NAME}:" /etc/passwd >> /dev/null 
 ret=$?
 if [ ${ret} -eq 0 ]; then
     echo "Given User exists"
@@ -25,10 +25,10 @@ fi
 
 # Check if the given group exits else create it.
 # ==============================================
-grep -i "^${GROUP_NAME}" /etc/group >> /dev/null
+grep -i "^${GROUP_NAME}:" /etc/group >> /dev/null
 ret=$? 
 if [ $ret -ne 0 ]; then
-    sudo groupadd${GROUP_NAME}
+    sudo groupadd ${GROUP_NAME}
 fi
 
 # Create a new user with the given credentials

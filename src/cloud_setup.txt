@@ -6,6 +6,8 @@
 
 the public key file will be ~/.ssh/id_rsa.pub
 
+-> write the ipaddress of the cloud vm, username and timestamp=0 in .dbupload.conf file
+
 -> copy the content of public key file, login into the user account of cloud vm(credentials given to add_user_ubuntu.sh)
 go to ~/.ssh folder and place the copied content in authorized_keys file.
 
@@ -14,6 +16,9 @@ go to ~/.ssh folder and place the copied content in authorized_keys file.
 sh cron-setup.sh 'sh <dir>/checkTunneling.sh' 2
 sh cron-setup.sh 'sh <dir>/db_upload.sh' 1
 
--> setup the .tunneling.conf script with assigned port number for client, and give the ipaddres of cloud vm, user name of the client
-
 -> run the tunneling.sh script in local (client) machine
+
+-> enable logging in local mysql client by adding following lines in "/etc/my.cnf" or "/etc/mysql/my.cnf" in [mysqld] section
+	log_bin         =   /var/log/mysql/mysql-bin.log
+	binlog_format   =   MIXED
+

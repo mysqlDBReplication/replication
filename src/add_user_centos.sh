@@ -1,5 +1,4 @@
 # This script is used add user and the upload folder and set its permissions
-set -x
 
 # Check for the number of parameters given
 # ========================================

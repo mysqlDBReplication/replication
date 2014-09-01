@@ -4,7 +4,7 @@
 # ========================================
 if [ $# != 3 ]; then
     echo "Wrong number of parameters passed"
-    echo "Usage: sh add_user.sh <userid> <password> <user name> <Group>"
+    echo "Usage: sh add_user.sh <userid> <password> <Group>"
     exit 2;
 fi
 

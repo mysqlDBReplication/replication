@@ -9,5 +9,5 @@ dir=`dirname $0`
 
 process_count=`ps -ef | grep "ssh -f -R $port:localhost:3306 ${user}@${ip_address}" | grep -v 'grep' | wc -l`
 if [ $process_count -le 0 ]; then
-	sh ${dir}/tunneling.sh ${ip_address} ${user} ${port}
+	sh ${dir}/tunneling.sh ${ip_address} ${port} ${user}
 fi
